@@ -32,10 +32,8 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
             //When the state of a connect has changed
             int state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
             if (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED){
-                Toast.makeText( context, "State enabled", Toast.LENGTH_SHORT).show();
             }
             else if(state == WifiP2pManager.WIFI_P2P_STATE_DISABLED) {
-                Toast.makeText(context, "State disabled", Toast.LENGTH_SHORT).show();
             }
 
         }

@@ -13,6 +13,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -50,23 +51,37 @@ public class GameSession extends AppCompatActivity {
     ServerThread server;
     SendReceive sendReceive;
 
+    Board game_board;
+
+
     static final int PORT = 8890;
-    static final int MESSAGE_READ = 1;
-    static final int TEST_COMMAND = 2;
+    static final int PIECE_PLAYED = 0;
+    static final int NEXT_TURN = 1;
 
     WifiP2pManager.ConnectionInfoListener connectionInfoListener = new WifiP2pManager.ConnectionInfoListener() {
         @Override
         public void onConnectionInfoAvailable(WifiP2pInfo info) {
             InetAddress groupOwnerAddress = info.groupOwnerAddress;
 
+            //Once there is a connection established, start the game.
             if (info.groupFormed && info.isGroupOwner) {
                 Toast.makeText(getApplicationContext(), "Host", Toast.LENGTH_SHORT).show();
                 server = new ServerThread();
                 server.start();
-            } else if (info.groupFormed) {
+
+                GameSession.this.game_board = new Board( getApplicationContext(), true);
+                ViewGroup layout = (ViewGroup)findViewById(R.id.board_space);
+                layout.addView(game_board);
+
+            }
+            else if (info.groupFormed) {
                 Toast.makeText(getApplicationContext(), "Client", Toast.LENGTH_SHORT).show();
                 client = new ClientThread(groupOwnerAddress);
                 client.start();
+
+                GameSession.this.game_board = new Board( getApplicationContext(), false);
+                ViewGroup layout = (ViewGroup)findViewById(R.id.board_space);
+                layout.addView(game_board);
             }
         }
     };
@@ -189,17 +204,15 @@ public class GameSession extends AppCompatActivity {
                     @Override
                     public boolean handleMessage(Message msg) {
                         switch (msg.what) {
-                            case MESSAGE_READ:
-//                            byte[] readBuff = (byte[]) msg.obj;
-//                            String tempMsg = new String(readBuff, 0, msg.arg1);
-
+                            case NEXT_TURN:
                                 String tempMsg = (msg.obj).toString();
-//                            ((Button) findViewById(R.id.send)).setText(tempMsg.toString());
-                                Toast.makeText(getApplicationContext(), tempMsg, Toast.LENGTH_SHORT).show();
+                                Toast.makeText(getApplicationContext(), "Your Turn", Toast.LENGTH_SHORT).show();
+                                game_board.startTurn();
                                 break;
-                            case TEST_COMMAND:
-                                Toast.makeText(getApplicationContext(), "test command", Toast.LENGTH_SHORT).show();
-//                            ((Button) findViewById(R.id.send)).setText("Test");
+
+                            case PIECE_PLAYED:
+                                //extract coordinates from msg
+                                game_board.updateBoardState();
                                 break;
                         }
 
@@ -278,10 +291,12 @@ public class GameSession extends AppCompatActivity {
                         bytes = in_stream.read(buffer);
                         if (bytes > 0) {
                             String tempMsg = new String(buffer, 0, bytes);
-                            if (tempMsg.equals("test")) {
-                                handler.obtainMessage(TEST_COMMAND, tempMsg).sendToTarget();
-                            } else {
-                                handler.obtainMessage(MESSAGE_READ, tempMsg).sendToTarget();
+                            String command = tempMsg.substring(0, tempMsg.indexOf(" "));
+                            if (command.equals("next_turn")) {
+                                handler.obtainMessage(NEXT_TURN, tempMsg).sendToTarget();
+                            }
+                            else if (command.equals("piece"){
+                                handler.obtainMessage(PIECE_PLAYED, tempMsg).sendToTarget();
                             }
                         }
 
