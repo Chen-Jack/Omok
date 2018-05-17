@@ -42,43 +42,37 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
         else if(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)){
             //when the list of connections has changed
             if(this.manager != null){
-                this.manager.requestPeers(this.channel,
-                        new WifiP2pManager.PeerListListener() {
-                            @Override
-                            public void onPeersAvailable(WifiP2pDeviceList peers) {
-                                if(peers.getDeviceList().size() == 0){
-                                    Toast.makeText(context, "No Opponents Found", Toast.LENGTH_SHORT);
-                                }
-                                else if(!peers.getDeviceList().equals(main_activity.devices)){
-//                                else{
-//                                    List<WifiP2pDevice> discovery_list = new ArrayList<>();
-//                                    discovery_list.addAll(peers.getDeviceList());
-//                                    for(WifiP2pDevice dev : discovery_list) {
-//                                        main_activity.connectTo(dev);
-//                                    }
+                //Only check for peer changes if you havent connected to someone yet.
+                if( !((GameSession)context).inSession ) {
+                    this.manager.requestPeers(this.channel,
+                            new WifiP2pManager.PeerListListener() {
+                                @Override
+                                public void onPeersAvailable(WifiP2pDeviceList peers) {
+                                    if (peers.getDeviceList().size() == 0) {
+                                        Toast.makeText(context, "No Opponents Found", Toast.LENGTH_SHORT);
+                                    } else if (!peers.getDeviceList().equals(main_activity.devices)) {
+                                        main_activity.devices.clear();
+                                        ;
+                                        main_activity.devices.addAll(peers.getDeviceList());
 
-                                    main_activity.devices.clear();;
-                                    main_activity.devices.addAll(peers.getDeviceList());
+                                        main_activity.device_names = new String[peers.getDeviceList().size()];
+                                        main_activity.device_list = new WifiP2pDevice[peers.getDeviceList().size()];
+                                        int index = 0;
+                                        for (WifiP2pDevice device : peers.getDeviceList()) {
+                                            main_activity.device_names[index] = device.deviceName;
+                                            main_activity.device_list[index] = device;
+                                            index += 1;
+                                        }
 
-                                    main_activity.device_names = new String[peers.getDeviceList().size()];
-                                    main_activity.device_list = new WifiP2pDevice[peers.getDeviceList().size()];
-                                    int index = 0;
-                                    for(WifiP2pDevice device : peers.getDeviceList()){
-                                        main_activity.device_names[index] = device.deviceName;
-                                        main_activity.device_list[index] = device;
-                                        index += 1;
+
+                                        main_activity.updateListView(main_activity.device_names);
+
+
                                     }
-
-
-
-                                    main_activity.updateListView(main_activity.device_names);
-
-
                                 }
                             }
-                        }
-                );
-
+                    );
+                }
             }
 
         }

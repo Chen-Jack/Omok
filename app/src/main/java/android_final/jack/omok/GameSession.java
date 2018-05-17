@@ -53,7 +53,9 @@ public class GameSession extends AppCompatActivity {
     Board game_board;
 
     Button discover_button;
-    TextView status;
+    Button surrender_button;
+
+    public boolean inSession = false;
 
 
     static final int PORT = 8890;
@@ -61,11 +63,17 @@ public class GameSession extends AppCompatActivity {
     static final int NEXT_TURN = 1;
     static final int WINNER = 2;
     static final int LOSER = 3;
+    static final int RESTART_GAME = 4;
 
     WifiP2pManager.ConnectionInfoListener connectionInfoListener = new WifiP2pManager.ConnectionInfoListener() {
         @Override
         public void onConnectionInfoAvailable(WifiP2pInfo info) {
             InetAddress groupOwnerAddress = info.groupOwnerAddress;
+
+            //Disable button clicks
+
+            inSession = true;
+//            ((ViewGroup)findViewById(R.id.main_layout)).removeView(findViewById(R.id.list_view));
 
             //Once there is a connection established, start the game.
             if (info.groupFormed && info.isGroupOwner) {
@@ -134,6 +142,8 @@ public class GameSession extends AppCompatActivity {
         this.filter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
         this.filter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
 
+        wifi_manager.setWifiEnabled(true);
+
         this.discover_button = findViewById(R.id.discover_btn);
         this.discover_button.setOnClickListener(
                 new View.OnClickListener() {
@@ -155,6 +165,15 @@ public class GameSession extends AppCompatActivity {
                 }
         );
 
+        this.surrender_button = findViewById(R.id.surrender_btn);
+        this.surrender_button.setOnClickListener(
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        game_board.restartGame();
+                    }
+                }
+        );
 
         ((ListView) findViewById(R.id.list_view)).setOnItemClickListener(
                 new AdapterView.OnItemClickListener() {
@@ -168,7 +187,7 @@ public class GameSession extends AppCompatActivity {
                                 new WifiP2pManager.ActionListener() {
                                     @Override
                                     public void onSuccess() {
-                                        Toast.makeText(getApplicationContext(), "Connected to " + device_names[position], Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(getApplicationContext(), "Playing against " + device_names[position], Toast.LENGTH_SHORT).show();
                                     }
 
                                     @Override
@@ -214,9 +233,12 @@ public class GameSession extends AppCompatActivity {
                                 Toast.makeText(getApplicationContext(), "Loser", Toast.LENGTH_SHORT).show();
                                 //Create alert dialog that you lost
                                 AlertDialog.Builder builder = new AlertDialog.Builder(getApplicationContext());
-                                builder.setMessage("Lost");
-                                builder.create();
+                                builder.setMessage("You Lost...");
+                                builder.show();
 
+                                break;
+                            case RESTART_GAME:
+                                game_board.restartGame();
                                 break;
                         }
 
@@ -304,9 +326,6 @@ public class GameSession extends AppCompatActivity {
                             else if (command.equals(PIECE_PLAYED)){
                                 Integer spot_x = Integer.parseInt(msg_arr[1]);
                                 Integer spot_y = Integer.parseInt(msg_arr[2]);
-//
-//                                Log.i("TEST", "Spot x is " + spot_x);
-//                                Log.i("TEST" , "Spot y is " + spot_y);
 
                                 //obtainMessage(int what, int arg1, int arg2)
                                 handler.obtainMessage(PIECE_PLAYED, spot_x, spot_y, tempMsg).sendToTarget();
@@ -315,6 +334,9 @@ public class GameSession extends AppCompatActivity {
 
                                 //obtainMessage(int what, int arg1, int arg2)
                                 handler.obtainMessage(WINNER, tempMsg).sendToTarget();
+                            }
+                            else if(command.equals(RESTART_GAME)){
+                                handler.obtainMessage(RESTART_GAME, tempMsg).sendToTarget();
                             }
                         }
 
@@ -354,8 +376,8 @@ public class GameSession extends AppCompatActivity {
 
     @Override
     protected void onDestroy () {
+        wifi_manager.setWifiEnabled(false);
         super.onDestroy();
-//            wifi_manager.setWifiEnabled(false);
     }
 
 }

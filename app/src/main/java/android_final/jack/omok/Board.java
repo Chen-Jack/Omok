@@ -144,15 +144,15 @@ public class Board extends View {
         }
     }
 
-    public void startTurn(){
-        this.your_turn = true;
-//        if(your_turn)
-//            ((TextView)findViewById(R.id.status)).setText("Your Turn");
-        Toast.makeText(context, "Your Turn", Toast.LENGTH_SHORT).show();
-    }
 
     public Spot getSpot(int i, int j){
         return board_state[i][j];
+    }
+
+    public void startTurn(){
+        this.your_turn = true;
+        ((TextView)((GameSession)context).findViewById(R.id.turn_status)).setText("Your Turn");
+        Toast.makeText(context, "Your Turn", Toast.LENGTH_SHORT).show();
     }
 
     public void endTurn() {
@@ -162,6 +162,7 @@ public class Board extends View {
         byte[] bytes = command.getBytes();
         ((GameSession)this.context).sendReceive.write(bytes);
 
+        ((TextView)((GameSession)context).findViewById(R.id.turn_status)).setText("Their Turn");
         Toast.makeText(context, "Their Turn", Toast.LENGTH_SHORT).show();
     }
 
@@ -270,8 +271,6 @@ public class Board extends View {
                 if(board_state[i][j].isOccupied()){
                     Log.i("TEST", "PIECE AT " + i + " " + j + " is owned by " + board_state[i][j].owner.toString());
                 }
-//                String loc = "("+board_state[i][j].pixel_x+","+board_state[i][j].pixel_y+")";
-//                Log.i("TEST", i + "," + j + " is located at " + loc);
             }
         }
     }
@@ -292,8 +291,8 @@ public class Board extends View {
         //Create alert dialog that you won
 
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setMessage("Lost");
-        builder.create();
+        builder.setMessage("YOU WIN!");
+        builder.show();
 
         Toast.makeText(context, "Winner", Toast.LENGTH_SHORT).show();
 
@@ -424,6 +423,25 @@ public class Board extends View {
             }
         }
         return false;
+
+    }
+
+    public void restartGame(){
+
+        //Swap who goes first and swap the colors
+        this.goes_first = !this.goes_first;
+        if(this.goes_first)
+            your_color = new Paint(Color.WHITE);
+        else
+            your_color = new Paint(Color.BLACK);
+
+        //Who ever is white now goes first
+        this.your_turn = this.goes_first;
+
+        String command = String.valueOf(GameSession.RESTART_GAME);
+        byte[] bytes = command.getBytes();
+        ((GameSession)context).sendReceive.write(bytes);
+        initialize_board_state();
 
     }
 
