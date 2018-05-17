@@ -331,7 +331,7 @@ public class Board extends View {
         //Create alert dialog that you won
 
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setMessage("YOU WIN!");
+        builder.setTitle("YOU WIN!");
         builder.setMessage("Opponent is deciding on rematch . . .");
         builder.show();
 
