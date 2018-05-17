@@ -66,27 +66,48 @@ public class GameSession extends AppCompatActivity {
 
             //Once there is a connection established, start the game.
             if (info.groupFormed && info.isGroupOwner) {
-                Toast.makeText(getApplicationContext(), "Host", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getApplicationContext(), "White", Toast.LENGTH_SHORT).show();
                 server = new ServerThread();
                 server.start();
 
-                GameSession.this.game_board = new Board( getApplicationContext(), true);
+                GameSession.this.game_board = new Board( GameSession.this, true);
                 ViewGroup layout = (ViewGroup)findViewById(R.id.board_space);
                 layout.addView(game_board);
 
             }
             else if (info.groupFormed) {
-                Toast.makeText(getApplicationContext(), "Client", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getApplicationContext(), "Black", Toast.LENGTH_SHORT).show();
                 client = new ClientThread(groupOwnerAddress);
                 client.start();
 
-                GameSession.this.game_board = new Board( getApplicationContext(), false);
+                GameSession.this.game_board = new Board( GameSession.this, false);
                 ViewGroup layout = (ViewGroup)findViewById(R.id.board_space);
                 layout.addView(game_board);
             }
         }
     };
 
+    public void connectTo(WifiP2pDevice connection_device){
+        final WifiP2pDevice device = connection_device;
+        WifiP2pConfig config = new WifiP2pConfig();
+        config.deviceAddress = device.deviceAddress;
+
+        p2p_manager.connect(GameSession.this.channel, config,
+                new WifiP2pManager.ActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        Toast.makeText(getApplicationContext(), "Connected to " + device.deviceName, Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onFailure(int reason) {
+//                        Toast.makeText(getApplicationContext(), "Failed to connect", Toast.LENGTH_SHORT).show();
+                        Log.i("TEST", "Failed to connect");
+
+                    }
+                });
+
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,17 +118,6 @@ public class GameSession extends AppCompatActivity {
 
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        registerReceiver(this.receiver, this.filter);
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        unregisterReceiver(this.receiver);
-    }
 
     private void initializeActivity() {
         this.wifi_manager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
@@ -122,26 +132,6 @@ public class GameSession extends AppCompatActivity {
         this.filter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
 
         this.discover_button = findViewById(R.id.discover_btn);
-//        this.input_field = findViewById(R.id.input);
-//        this.send_button = findViewById(R.id.send);
-//
-//
-//        wifi_manager.setWifiEnabled(true);
-//
-//        this.send_button.setOnClickListener(
-//                new View.OnClickListener() {
-//                    @Override
-//                    public void onClick(View v) {
-//                        String val = MainActivity.this.input_field.getText().toString();
-//                        Log.i("TEST", "Sent a message " + val);
-//                        Log.i("TEST", "Send Recieve is " + sendReceive.toString());
-//                        sendReceive.write(val.getBytes());
-//
-//                    }
-//                }
-//        );
-
-//
         this.discover_button.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
@@ -162,42 +152,43 @@ public class GameSession extends AppCompatActivity {
                 }
         );
 
-//        ((ListView) findViewById(R.id.list)).setOnItemClickListener(
-//                new AdapterView.OnItemClickListener() {
-//                    @Override
-//                    public void onItemClick(AdapterView<?> parent, View view, final int position, long id) {
-//                        WifiP2pDevice device = device_list[position];
-//                        WifiP2pConfig config = new WifiP2pConfig();
-//                        config.deviceAddress = device.deviceAddress;
-//
-//                        p2p_manager.connect(MainActivity.this.channel, config,
-//                                new WifiP2pManager.ActionListener() {
-//                                    @Override
-//                                    public void onSuccess() {
-//                                        Toast.makeText(getApplicationContext(), "Connected to " + device_names[position], Toast.LENGTH_SHORT).show();
-//                                    }
-//
-//                                    @Override
-//                                    public void onFailure(int reason) {
-//                                        Toast.makeText(getApplicationContext(), "Failed to connect", Toast.LENGTH_SHORT).show();
-//
-//                                    }
-//                                });
-//                    }
-//                }
-//        );
+
+        ((ListView) findViewById(R.id.list_view)).setOnItemClickListener(
+                new AdapterView.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(AdapterView<?> parent, View view, final int position, long id) {
+                        WifiP2pDevice device = device_list[position];
+                        WifiP2pConfig config = new WifiP2pConfig();
+                        config.deviceAddress = device.deviceAddress;
+
+                        p2p_manager.connect(GameSession.this.channel, config,
+                                new WifiP2pManager.ActionListener() {
+                                    @Override
+                                    public void onSuccess() {
+                                        Toast.makeText(getApplicationContext(), "Connected to " + device_names[position], Toast.LENGTH_SHORT).show();
+                                    }
+
+                                    @Override
+                                    public void onFailure(int reason) {
+                                        Toast.makeText(getApplicationContext(), "Failed to connect", Toast.LENGTH_SHORT).show();
+
+                                    }
+                                });
+                    }
+                }
+        );
 
 
     }
 
 
-//
-//    public void updateListView(String[] device_names) {
-//
-//        ArrayAdapter<String> device_name_adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, device_names);
-//        ListView list_view = findViewById(R.id.list);
-//        list_view.setAdapter(device_name_adapter);
-//    }
+
+    public void updateListView(String[] device_names) {
+
+        ArrayAdapter<String> device_name_adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, device_names);
+        ListView list_view = findViewById(R.id.list_view);
+        list_view.setAdapter(device_name_adapter);
+    }
 
 
         Handler handler = new Handler(
@@ -206,14 +197,15 @@ public class GameSession extends AppCompatActivity {
                     public boolean handleMessage(Message msg) {
                         switch (msg.what) {
                             case NEXT_TURN:
-                                String tempMsg = (msg.obj).toString();
-                                Toast.makeText(getApplicationContext(), "Your Turn", Toast.LENGTH_SHORT).show();
                                 game_board.startTurn();
                                 break;
 
                             case PIECE_PLAYED:
                                 //extract coordinates from msg
-                                game_board.updateBoardState();
+                                int spot_x = msg.arg1;
+                                int spot_y = msg.arg2;
+//                                Board.Spot s = game_board.at(spot_x, spot_y);
+                                game_board.updateBoardState(spot_x, spot_y, true);
                                 break;
                         }
 
@@ -291,12 +283,22 @@ public class GameSession extends AppCompatActivity {
                         bytes = in_stream.read(buffer);
                         if (bytes > 0) {
                             String tempMsg = new String(buffer, 0, bytes);
-                            Integer command = Integer.parseInt(tempMsg.substring(0, tempMsg.indexOf(" ")));
+                            String[] msg_arr = tempMsg.split("\\s+");
+                            Integer command = Integer.parseInt(msg_arr[0]);
+
                             if (command.equals(NEXT_TURN)) {
+                                //obtainMessage(int what, Object obj)
                                 handler.obtainMessage(NEXT_TURN, tempMsg).sendToTarget();
                             }
-                            else if (command.equals(PIECE_PLAYED){
-                                handler.obtainMessage(PIECE_PLAYED, tempMsg).sendToTarget();
+                            else if (command.equals(PIECE_PLAYED)){
+                                Integer spot_x = Integer.parseInt(msg_arr[1]);
+                                Integer spot_y = Integer.parseInt(msg_arr[2]);
+//
+//                                Log.i("TEST", "Spot x is " + spot_x);
+//                                Log.i("TEST" , "Spot y is " + spot_y);
+
+                                //obtainMessage(int what, int arg1, int arg2)
+                                handler.obtainMessage(PIECE_PLAYED, spot_x, spot_y, tempMsg).sendToTarget();
                             }
                         }
 
@@ -321,6 +323,18 @@ public class GameSession extends AppCompatActivity {
 
 
         }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        registerReceiver(this.receiver, this.filter);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(this.receiver);
+    }
 
     @Override
     protected void onDestroy () {

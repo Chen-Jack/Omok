@@ -11,6 +11,8 @@ import android.net.wifi.p2p.WifiP2pManager;
 import android.widget.Toast;
 
 import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
@@ -45,9 +47,16 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
                             @Override
                             public void onPeersAvailable(WifiP2pDeviceList peers) {
                                 if(peers.getDeviceList().size() == 0){
-                                    Toast.makeText(context, "No Devices Found", Toast.LENGTH_SHORT);
+                                    Toast.makeText(context, "No Opponents Found", Toast.LENGTH_SHORT);
                                 }
                                 else if(!peers.getDeviceList().equals(main_activity.devices)){
+//                                else{
+//                                    List<WifiP2pDevice> discovery_list = new ArrayList<>();
+//                                    discovery_list.addAll(peers.getDeviceList());
+//                                    for(WifiP2pDevice dev : discovery_list) {
+//                                        main_activity.connectTo(dev);
+//                                    }
+
                                     main_activity.devices.clear();;
                                     main_activity.devices.addAll(peers.getDeviceList());
 
@@ -59,8 +68,10 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
                                         main_activity.device_list[index] = device;
                                         index += 1;
                                     }
-//
-//                                    main_activity.updateListView(main_activity.device_names);
+
+
+
+                                    main_activity.updateListView(main_activity.device_names);
 
 
                                 }

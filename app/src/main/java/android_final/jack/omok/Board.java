@@ -13,6 +13,8 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.TextView;
+import android.widget.Toast;
 
 public class Board extends View {
 
@@ -20,7 +22,7 @@ public class Board extends View {
     public class Spot{
         public int x;
         public int y;
-        public boolean occupied;
+        private boolean occupied;
 
         public double pixel_x; //The pixel that the spot is located at
         public double pixel_y;
@@ -35,8 +37,16 @@ public class Board extends View {
 
             this.pixel_x = pixel_of_x_0 + (x * pixel_per_spot);
             this.pixel_y = pixel_of_y_0 + (y * pixel_per_spot);
-            String loc = "(" + pixel_x+","+ pixel_y+")";
-            Log.i("TEST", x + "," + y + " is constructed at " + loc);
+//            String loc = "(" + pixel_x+","+ pixel_y+")";
+//            Log.i("TEST", x + "," + y + " is constructed at " + loc);
+        }
+
+        public void setOccupied(boolean status){
+            this.occupied = status;
+        }
+
+        public boolean isOccupied(){
+            return this.occupied;
         }
     }
 
@@ -48,6 +58,7 @@ public class Board extends View {
 
     boolean your_turn = false;
     boolean isWhite = false;
+    boolean board_initialized = false;
 
     Context context;
 
@@ -59,13 +70,6 @@ public class Board extends View {
         your_turn = goesFirst;
         isWhite = goesFirst; //White goes first, hey I didn't design this game
 
-        //Next 3 lines is to get the width of the screen.
-        DisplayMetrics displayMetrics = new DisplayMetrics();
-        ((Activity)context).getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-        int screen_width = displayMetrics.widthPixels;
-        this.pixel_per_spot = ((double)screen_width/ ((double)dimensions + 1));
-
-        initialize_board_state();
     }
 
 //    public Board(Context context, int dim){
@@ -83,17 +87,25 @@ public class Board extends View {
                 board_state[i][j] = new Spot(i,j);
             }
         }
+//        if(your_turn)
+//            board_state[10][10].setOccupied(true);
+//        else
+//            board_state[5][5].setOccupied(true);
+
+        this.board_initialized = true;
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        printBoardState();
+
         switch(event.getAction()){
             case MotionEvent.ACTION_UP:
                 if(your_turn) {
-                    Log.i("TEST", "Touched " + event.getX() + " " + event.getY());
+                    Log.i("TEST", "TAPPED");
                     Spot s = findNearestSpot(event.getX(), event.getY());
                     if (isValidMove(s)) {
-                        updateBoardState(s);
+                        updateBoardState(s, true);
                         updateOpponentsBoardState(s);
                         endTurn();
                     }
@@ -107,27 +119,35 @@ public class Board extends View {
 
     public void updateOpponentsBoardState(Spot s) {
         //"piece 2 3" means piece was placed at 2,3
-        String command = String.valueOf(GameSession.PIECE_PLAYED) + String.valueOf(s.x) + " " + String.valueOf(s.y);
+        String command = String.valueOf(GameSession.PIECE_PLAYED) + " " + String.valueOf(s.x) + " " + String.valueOf(s.y);
         byte[] bytes = command.getBytes();
-        ((GameSession)context).sendReceive.write(bytes);
+        ((GameSession)this.context).sendReceive.write(bytes);
     }
 
     public void startTurn(){
         this.your_turn = true;
+//        if(your_turn)
+//            ((TextView)findViewById(R.id.status)).setText("Your Turn");
+        Toast.makeText(context, "Your Turn", Toast.LENGTH_SHORT).show();
+    }
 
+    public Spot at(int i, int j){
+        return board_state[i][j];
     }
 
     public void endTurn() {
         this.your_turn = false;
+        Toast.makeText(context, "Their Turn", Toast.LENGTH_SHORT).show();
 
         String command = String.valueOf(GameSession.NEXT_TURN);
         byte[] bytes = command.getBytes();
-        ((GameSession)context).sendReceive.write(bytes);
+        ((GameSession)this.context).sendReceive.write(bytes);
     }
 
     @Override
     protected void onDraw(Canvas canvas){
         super.onDraw(canvas);
+
 
         Bitmap go_board_img = BitmapFactory.decodeResource(getResources(), R.drawable.go_board);
         //Resize the image to take up the size of the screen width
@@ -136,8 +156,15 @@ public class Board extends View {
         //Draw the board
         canvas.drawBitmap(go_board_img, 0, 0, null);
 
+        this.pixel_per_spot = (go_board_img.getWidth()/ ((double)dimensions + 1));
+
+        if(!board_initialized)
+            initialize_board_state();
+
         //Draw all the pieces on the board
         drawBoardState(canvas, this.board_state);
+
+        invalidate();
     }
 
     public void drawBoardState(Canvas canvas, Spot[][] board_state){
@@ -152,8 +179,8 @@ public class Board extends View {
     }
 
     public void placePiece(Canvas canvas, Spot s){
-        String loc = "(" + s.pixel_x + " , " + s.pixel_y + ")";
-        Log.i("TEST", "Placing piece at " + loc);
+//        String loc = "(" + s.pixel_x + " , " + s.pixel_y + ")";
+//        Log.i("TEST", "Placing piece at " + loc);
         Paint paint = new Paint();
         if(isWhite)
             paint.setColor(Color.WHITE);
@@ -199,20 +226,23 @@ public class Board extends View {
         Log.i("TEST", "Printing Board State");
         for(int i=0; i<dimensions; i++){
             for(int j=0; j<dimensions; j++){
-                String loc = "("+board_state[i][j].pixel_x+","+board_state[i][j].pixel_y+")";
-                Log.i("TEST", i + "," + j + " is located at " + loc);
+                if(board_state[i][j].isOccupied()){
+                    Log.i("TEST", "PIECE AT " + i + " " + j);
+                }
+//                String loc = "("+board_state[i][j].pixel_x+","+board_state[i][j].pixel_y+")";
+//                Log.i("TEST", i + "," + j + " is located at " + loc);
             }
         }
     }
 
-    public void updateBoardState(Spot s){
-        s.occupied = true;
-        invalidate();
+    public void updateBoardState(Spot s, boolean status){
+        s.setOccupied(status);
     }
 
     public void updateBoardState(int x, int y, boolean status){
-       board_state[x][y].occupied = status;
-       invalidate();
+        Log.i("TEST", "Updating " + x + ", " + y + " to " +status);
+       board_state[x][y].setOccupied(status);
+       Log.i("TEST" , "STATUS IS " + board_state[x][y].isOccupied());
     }
 
     public void win(){
