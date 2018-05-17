@@ -207,8 +207,8 @@ public class GameSession extends AppCompatActivity {
                                 //extract coordinates from msg
                                 int spot_x = msg.arg1;
                                 int spot_y = msg.arg2;
-//                                Board.Spot s = game_board.at(spot_x, spot_y);
-                                game_board.updateBoardState(spot_x, spot_y, true);
+                                game_board.updateBoardState(spot_x, spot_y, game_board.their_color, true);
+
                                 break;
                             case WINNER:
                                 Toast.makeText(getApplicationContext(), "Loser", Toast.LENGTH_SHORT).show();

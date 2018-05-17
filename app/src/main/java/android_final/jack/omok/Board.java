@@ -41,7 +41,7 @@ public class Board extends View {
             this.pixel_x = pixel_of_x_0 + (x * pixel_per_spot);
             this.pixel_y = pixel_of_y_0 + (y * pixel_per_spot);
 
-            this.owner = null_color;
+            this.owner = null;
         }
 
         public void setOccupied(boolean status){
@@ -63,9 +63,9 @@ public class Board extends View {
 
     Spot[][] board_state;
 
-    Paint null_color;
-    Paint your_color;
-    Paint their_color;
+    Paint default_color = new Paint(Color.RED);
+    public Paint your_color;
+    public Paint their_color;
 
     boolean your_turn = false;
     boolean board_initialized = false;
@@ -77,11 +77,10 @@ public class Board extends View {
 
         this.context = context;
 
-        null_color = new Paint(Color.RED);
-        your_turn = goesFirst;
         if(goesFirst) {    //White goes first, hey I didn't design this game
             your_color = new Paint(Color.WHITE);
             their_color = new Paint(Color.BLACK);
+            startTurn();
         }
         else {
             your_color = new Paint(Color.BLACK);
@@ -110,16 +109,14 @@ public class Board extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        printBoardState();
 
         switch(event.getAction()){
             case MotionEvent.ACTION_UP:
                 if(your_turn) {
                     Spot s = findNearestSpot(event.getX(), event.getY());
                     if (isValidMove(s)) {
-                        s.setOwner(your_color);
-                        updateBoardState(s, true);
-                        updateOpponentsBoardState(s);
+                        updateBoardState(s, your_color, true);
+//                        updateOpponentsBoardState(s);
                         if(checkWinCondition())
                             winGame();
                         else
@@ -152,11 +149,12 @@ public class Board extends View {
 
     public void endTurn() {
         this.your_turn = false;
-        Toast.makeText(context, "Their Turn", Toast.LENGTH_SHORT).show();
 
         String command = String.valueOf(GameSession.NEXT_TURN);
         byte[] bytes = command.getBytes();
         ((GameSession)this.context).sendReceive.write(bytes);
+
+        Toast.makeText(context, "Their Turn", Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -186,10 +184,12 @@ public class Board extends View {
             for(int j=0; j<dimensions; j++){
                 Spot s = board_state[i][j];
                 if(s.occupied == true)
-                    if(s.owner.equals(your_color))
+                    if(s.owner == your_color)
                         placePiece(canvas, board_state[i][j], your_color);
-                    else
+                    else if (s.owner == their_color)
                         placePiece(canvas, board_state[i][j], their_color);
+                    else
+                        placePiece(canvas, board_state[i][j], default_color);
             }
         }
 
@@ -247,12 +247,14 @@ public class Board extends View {
         }
     }
 
-    public void updateBoardState(Spot s, boolean status){
-        updateBoardState(s.x, s.y, status);
+    public void updateBoardState(Spot s, Paint owner, boolean status){
+        updateBoardState(s.x, s.y, owner, status);
     }
-    public void updateBoardState(int x, int y, boolean status){
-       board_state[x][y].setOccupied(status);
-       invalidate();
+    public void updateBoardState(int x, int y, Paint owner,  boolean status){
+        Spot s = getSpot(x,y);
+        board_state[x][y].setOccupied(status);
+        board_state[x][y].setOwner(owner);
+        invalidate();
     }
 
 
@@ -293,21 +295,21 @@ public class Board extends View {
         int y = s.y;
 
         if(!(x - 4 < 0)){
-            if(getSpot(x,y).owner.equals(your_color) &&
-                    getSpot(x - 1, y).owner.equals(your_color) &&
-                    getSpot(x - 2, y).owner.equals(your_color) &&
-                    getSpot(x - 3, y).owner.equals(your_color) &&
-                    getSpot(x - 4, y).owner.equals(your_color)){
+            if((getSpot(x,y).owner == your_color) &&
+                    (getSpot(x - 1, y).owner == your_color) &&
+                    (getSpot(x - 2, y).owner == your_color) &&
+                    (getSpot(x - 3, y).owner == your_color) &&
+                    (getSpot(x - 4, y).owner == your_color)){
                 return true;
             }
             return false;
         }
         if(!(x + 4 >= dimensions)){
-            if(getSpot(x,y).owner.equals(your_color) &&
-                    getSpot(x + 1, y).owner.equals(your_color) &&
-                    getSpot(x + 2, y).owner.equals(your_color) &&
-                    getSpot(x + 3, y).owner.equals(your_color) &&
-                    getSpot(x + 4, y).owner.equals(your_color)){
+            if((getSpot(x,y).owner == your_color) &&
+                    (getSpot(x + 1, y).owner == your_color) &&
+                    (getSpot(x + 2, y).owner == your_color) &&
+                    (getSpot(x + 3, y).owner == your_color) &&
+                    (getSpot(x + 4, y).owner == your_color)){
                 return true;
             }
 
@@ -322,21 +324,21 @@ public class Board extends View {
         int y = s.y;
 
         if(!(y - 4 < 0)){
-            if(getSpot(x,y).owner.equals(your_color) &&
-                    getSpot(x, y - 1).owner.equals(your_color) &&
-                    getSpot(x, y - 2).owner.equals(your_color) &&
-                    getSpot(x, y - 3).owner.equals(your_color) &&
-                    getSpot(x, y - 4).owner.equals(your_color)){
+            if((getSpot(x,y).owner == your_color) &&
+                    (getSpot(x, y - 1).owner == your_color) &&
+                    (getSpot(x, y - 2).owner == your_color) &&
+                    (getSpot(x, y - 3).owner == your_color) &&
+                    (getSpot(x, y - 4).owner == your_color)){
                 return true;
             }
             return false;
         }
         if(!(y + 4 >= dimensions)){
-            if(getSpot(x,y).owner.equals(your_color) &&
-                    getSpot(x, y + 1).owner.equals(your_color) &&
-                    getSpot(x, y + 2).owner.equals(your_color) &&
-                    getSpot(x, y + 3).owner.equals(your_color) &&
-                    getSpot(x, y + 4).owner.equals(your_color)){
+            if((getSpot(x,y).owner == your_color) &&
+                    (getSpot(x, y + 1).owner == your_color) &&
+                    (getSpot(x, y + 2).owner == your_color) &&
+                    (getSpot(x, y + 3).owner == your_color) &&
+                    (getSpot(x, y + 4).owner == your_color)){
                 return true;
             }
 
@@ -352,43 +354,43 @@ public class Board extends View {
 
         if( ( (x + 4) < dimensions) && ( (y + 4) < dimensions)) {
             //Down right diagonal
-            if (getSpot(x, y).owner.equals(your_color) &&
-                    getSpot(x + 1, y + 1).owner.equals(your_color) &&
-                    getSpot(x + 2, y + 2).owner.equals(your_color) &&
-                    getSpot(x + 3, y + 3).owner.equals(your_color) &&
-                    getSpot(x + 4, y + 4).owner.equals(your_color)) {
+            if ((getSpot(x, y).owner == your_color) &&
+                    (getSpot(x + 1, y + 1).owner == your_color) &&
+                    (getSpot(x + 2, y + 2).owner == your_color) &&
+                    (getSpot(x + 3, y + 3).owner == your_color) &&
+                    (getSpot(x + 4, y + 4).owner == your_color)) {
                 return true;
             }
         }
             //Down left diagonal
         if (((x-4) >= 0) && ((y+4) < dimensions)) {
-            if (getSpot(x, y).owner.equals(your_color) &&
-                    getSpot(x - 1, y + 1).owner.equals(your_color) &&
-                    getSpot(x - 2, y + 2).owner.equals(your_color) &&
-                    getSpot(x - 3, y + 3).owner.equals(your_color) &&
-                    getSpot(x - 4, y + 4).owner.equals(your_color)) {
+            if ((getSpot(x, y).owner == your_color) &&
+                    (getSpot(x - 1, y + 1).owner == your_color) &&
+                    (getSpot(x - 2, y + 2).owner == your_color) &&
+                    (getSpot(x - 3, y + 3).owner == your_color) &&
+                    (getSpot(x - 4, y + 4).owner == your_color)) {
                 return true;
             }
         }
 
         if (((x-4) >= 0) && ((y-4) >= 0)) {
             //Upleft diagonal
-            if (getSpot(x, y).owner.equals(your_color) &&
-                    getSpot(x - 1, y - 1).owner.equals(your_color) &&
-                    getSpot(x - 2, y - 2).owner.equals(your_color) &&
-                    getSpot(x - 3, y - 3).owner.equals(your_color) &&
-                    getSpot(x - 4, y - 4).owner.equals(your_color)) {
+            if ((getSpot(x, y).owner == your_color) &&
+                    (getSpot(x - 1, y - 1).owner == your_color) &&
+                    (getSpot(x - 2, y - 2).owner == your_color) &&
+                    (getSpot(x - 3, y - 3).owner == your_color) &&
+                    (getSpot(x - 4, y - 4).owner == your_color)) {
                 return true;
             }
         }
 
         if (((x+4) < dimensions) && ((y-4) >= 0)) {
             //up right diagonal
-            if (getSpot(x, y).owner.equals(your_color) &&
-                    getSpot(x + 1, y - 1).owner.equals(your_color) &&
-                    getSpot(x + 2, y - 2).owner.equals(your_color) &&
-                    getSpot(x + 3, y - 3).owner.equals(your_color) &&
-                    getSpot(x + 4, y - 4).owner.equals(your_color)) {
+            if ((getSpot(x, y).owner == your_color) &&
+                    (getSpot(x + 1, y - 1).owner == your_color) &&
+                    (getSpot(x + 2, y - 2).owner == your_color) &&
+                    (getSpot(x + 3, y - 3).owner == your_color) &&
+                    (getSpot(x + 4, y - 4).owner == your_color)) {
                 return true;
             }
         }
