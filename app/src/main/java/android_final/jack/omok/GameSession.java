@@ -19,6 +19,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
@@ -39,9 +40,6 @@ public class GameSession extends AppCompatActivity {
 
     IntentFilter filter;
 
-    Button discover_button;
-    EditText input_field;
-    Button send_button;
 
     public List<WifiP2pDevice> devices = new ArrayList<>();
     String[] device_names;
@@ -52,6 +50,9 @@ public class GameSession extends AppCompatActivity {
     SendReceive sendReceive;
 
     Board game_board;
+
+    Button discover_button;
+    TextView status;
 
 
     static final int PORT = 8890;
@@ -120,7 +121,7 @@ public class GameSession extends AppCompatActivity {
         this.filter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
         this.filter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
 
-//        this.discover_button = findViewById(R.id.discover);
+        this.discover_button = findViewById(R.id.discover_btn);
 //        this.input_field = findViewById(R.id.input);
 //        this.send_button = findViewById(R.id.send);
 //
@@ -141,25 +142,25 @@ public class GameSession extends AppCompatActivity {
 //        );
 
 //
-//        this.discover_button.setOnClickListener(
-//                new View.OnClickListener() {
-//                    @Override
-//                    public void onClick(View v) {
-//                        MainActivity.this.p2p_manager.discoverPeers(MainActivity.this.channel,
-//                                new WifiP2pManager.ActionListener() {
-//                                    @Override
-//                                    public void onSuccess() {
-//                                        Toast.makeText(MainActivity.this, "Discovery Started", Toast.LENGTH_SHORT).show();
-//                                    }
-//
-//                                    @Override
-//                                    public void onFailure(int reason) {
-//                                        Toast.makeText(MainActivity.this, "Failed to start discovery", Toast.LENGTH_SHORT).show();
-//                                    }
-//                                });
-//                    }
-//                }
-//        );
+        this.discover_button.setOnClickListener(
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        GameSession.this.p2p_manager.discoverPeers(GameSession.this.channel,
+                                new WifiP2pManager.ActionListener() {
+                                    @Override
+                                    public void onSuccess() {
+                                        Toast.makeText(GameSession.this, "Looking for Opponent", Toast.LENGTH_SHORT).show();
+                                    }
+
+                                    @Override
+                                    public void onFailure(int reason) {
+                                        Toast.makeText(GameSession.this, "Failed to Search", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                    }
+                }
+        );
 
 //        ((ListView) findViewById(R.id.list)).setOnItemClickListener(
 //                new AdapterView.OnItemClickListener() {
@@ -287,15 +288,14 @@ public class GameSession extends AppCompatActivity {
 
                 while (socket != null) {
                     try {
-                        //Reads FROM inputstream and puts it in the buffer. Returns the size of the input
                         bytes = in_stream.read(buffer);
                         if (bytes > 0) {
                             String tempMsg = new String(buffer, 0, bytes);
-                            String command = tempMsg.substring(0, tempMsg.indexOf(" "));
-                            if (command.equals("next_turn")) {
+                            Integer command = Integer.parseInt(tempMsg.substring(0, tempMsg.indexOf(" ")));
+                            if (command.equals(NEXT_TURN)) {
                                 handler.obtainMessage(NEXT_TURN, tempMsg).sendToTarget();
                             }
-                            else if (command.equals("piece"){
+                            else if (command.equals(PIECE_PLAYED){
                                 handler.obtainMessage(PIECE_PLAYED, tempMsg).sendToTarget();
                             }
                         }
