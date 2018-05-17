@@ -9,6 +9,7 @@ import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -58,6 +59,8 @@ public class GameSession extends AppCompatActivity {
     static final int PORT = 8890;
     static final int PIECE_PLAYED = 0;
     static final int NEXT_TURN = 1;
+    static final int WINNER = 2;
+    static final int LOSER = 3;
 
     WifiP2pManager.ConnectionInfoListener connectionInfoListener = new WifiP2pManager.ConnectionInfoListener() {
         @Override
@@ -207,6 +210,14 @@ public class GameSession extends AppCompatActivity {
 //                                Board.Spot s = game_board.at(spot_x, spot_y);
                                 game_board.updateBoardState(spot_x, spot_y, true);
                                 break;
+                            case WINNER:
+                                Toast.makeText(getApplicationContext(), "Loser", Toast.LENGTH_SHORT).show();
+                                //Create alert dialog that you lost
+                                AlertDialog.Builder builder = new AlertDialog.Builder(getApplicationContext());
+                                builder.setMessage("Lost");
+                                builder.create();
+
+                                break;
                         }
 
                         return true;
@@ -299,6 +310,11 @@ public class GameSession extends AppCompatActivity {
 
                                 //obtainMessage(int what, int arg1, int arg2)
                                 handler.obtainMessage(PIECE_PLAYED, spot_x, spot_y, tempMsg).sendToTarget();
+                            }
+                            else if (command.equals(WINNER)){
+
+                                //obtainMessage(int what, int arg1, int arg2)
+                                handler.obtainMessage(WINNER, tempMsg).sendToTarget();
                             }
                         }
 

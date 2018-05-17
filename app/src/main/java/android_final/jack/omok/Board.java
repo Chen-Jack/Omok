@@ -9,6 +9,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.os.Debug;
+import android.support.v7.app.AlertDialog;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -27,6 +28,8 @@ public class Board extends View {
         public double pixel_x; //The pixel that the spot is located at
         public double pixel_y;
 
+        public Paint owner; //The owner of this spot is either black or white
+
         public Spot(int x, int y){
             this.x = x;
             this.y = y;
@@ -37,8 +40,8 @@ public class Board extends View {
 
             this.pixel_x = pixel_of_x_0 + (x * pixel_per_spot);
             this.pixel_y = pixel_of_y_0 + (y * pixel_per_spot);
-//            String loc = "(" + pixel_x+","+ pixel_y+")";
-//            Log.i("TEST", x + "," + y + " is constructed at " + loc);
+
+            this.owner = null_color;
         }
 
         public void setOccupied(boolean status){
@@ -48,6 +51,10 @@ public class Board extends View {
         public boolean isOccupied(){
             return this.occupied;
         }
+
+        public void setOwner(Paint color){
+            this.owner = color;
+        }
     }
 
 
@@ -56,8 +63,11 @@ public class Board extends View {
 
     Spot[][] board_state;
 
+    Paint null_color;
+    Paint your_color;
+    Paint their_color;
+
     boolean your_turn = false;
-    boolean isWhite = false;
     boolean board_initialized = false;
 
     Context context;
@@ -67,9 +77,16 @@ public class Board extends View {
 
         this.context = context;
 
+        null_color = new Paint(Color.RED);
         your_turn = goesFirst;
-        isWhite = goesFirst; //White goes first, hey I didn't design this game
-
+        if(goesFirst) {    //White goes first, hey I didn't design this game
+            your_color = new Paint(Color.WHITE);
+            their_color = new Paint(Color.BLACK);
+        }
+        else {
+            your_color = new Paint(Color.BLACK);
+            their_color = new Paint(Color.WHITE);
+        }
     }
 
 //    public Board(Context context, int dim){
@@ -87,10 +104,6 @@ public class Board extends View {
                 board_state[i][j] = new Spot(i,j);
             }
         }
-//        if(your_turn)
-//            board_state[10][10].setOccupied(true);
-//        else
-//            board_state[5][5].setOccupied(true);
 
         this.board_initialized = true;
     }
@@ -102,15 +115,17 @@ public class Board extends View {
         switch(event.getAction()){
             case MotionEvent.ACTION_UP:
                 if(your_turn) {
-                    Log.i("TEST", "TAPPED");
                     Spot s = findNearestSpot(event.getX(), event.getY());
                     if (isValidMove(s)) {
+                        s.setOwner(your_color);
                         updateBoardState(s, true);
                         updateOpponentsBoardState(s);
-                        endTurn();
+                        if(checkWinCondition())
+                            winGame();
+                        else
+                            endTurn();
                     }
                 }
-
 
         }
         //idk why but gotta return something
@@ -131,7 +146,7 @@ public class Board extends View {
         Toast.makeText(context, "Your Turn", Toast.LENGTH_SHORT).show();
     }
 
-    public Spot at(int i, int j){
+    public Spot getSpot(int i, int j){
         return board_state[i][j];
     }
 
@@ -164,7 +179,6 @@ public class Board extends View {
         //Draw all the pieces on the board
         drawBoardState(canvas, this.board_state);
 
-        invalidate();
     }
 
     public void drawBoardState(Canvas canvas, Spot[][] board_state){
@@ -172,21 +186,19 @@ public class Board extends View {
             for(int j=0; j<dimensions; j++){
                 Spot s = board_state[i][j];
                 if(s.occupied == true)
-                    placePiece(canvas, board_state[i][j]);
+                    if(s.owner.equals(your_color))
+                        placePiece(canvas, board_state[i][j], your_color);
+                    else
+                        placePiece(canvas, board_state[i][j], their_color);
             }
         }
 
     }
 
-    public void placePiece(Canvas canvas, Spot s){
+    public void placePiece(Canvas canvas, Spot s, Paint owner){
 //        String loc = "(" + s.pixel_x + " , " + s.pixel_y + ")";
 //        Log.i("TEST", "Placing piece at " + loc);
-        Paint paint = new Paint();
-        if(isWhite)
-            paint.setColor(Color.WHITE);
-        else
-            paint.setColor(Color.BLACK);
-        canvas.drawCircle((float)s.pixel_x, (float)s.pixel_y, (float)(this.pixel_per_spot/2.0 * 0.9), paint );
+        canvas.drawCircle((float)s.pixel_x, (float)s.pixel_y, (float)(this.pixel_per_spot/2.0 * 0.9), owner );
     }
 
     public boolean isValidMove(Spot s){
@@ -236,16 +248,151 @@ public class Board extends View {
     }
 
     public void updateBoardState(Spot s, boolean status){
-        s.setOccupied(status);
+        updateBoardState(s.x, s.y, status);
     }
-
     public void updateBoardState(int x, int y, boolean status){
-        Log.i("TEST", "Updating " + x + ", " + y + " to " +status);
        board_state[x][y].setOccupied(status);
-       Log.i("TEST" , "STATUS IS " + board_state[x][y].isOccupied());
+       invalidate();
     }
 
-    public void win(){
+
+
+    public void winGame(){
+        //Create alert dialog that you won
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setMessage("Lost");
+        builder.create();
+
+        Toast.makeText(context, "Winner", Toast.LENGTH_SHORT).show();
+
+        //Let the opponent know they lost
+        String command = String.valueOf(GameSession.WINNER);
+        byte[] bytes = command.getBytes();
+        ((GameSession)context).sendReceive.write(bytes);
+    }
+
+    //Returns true if there is a 5 in a row somewhere
+    public boolean checkWinCondition(){
+        for(int i=0; i< dimensions; i++){
+            for(int j=0; j<dimensions; j++){
+                Spot s = getSpot(i,j);
+                if (checkHorizontalWin(s) || checkVerticalWin(s) || checkDiagonalWin(s) ){
+                    return true;
+                }
+            }
+
+        }
+
+        return false;
+    }
+
+    //checks if there is a horizontal win given the point as it's center
+    private boolean checkHorizontalWin(Spot s){
+        int x = s.x;
+        int y = s.y;
+
+        if(!(x - 4 < 0)){
+            if(getSpot(x,y).owner.equals(your_color) &&
+                    getSpot(x - 1, y).owner.equals(your_color) &&
+                    getSpot(x - 2, y).owner.equals(your_color) &&
+                    getSpot(x - 3, y).owner.equals(your_color) &&
+                    getSpot(x - 4, y).owner.equals(your_color)){
+                return true;
+            }
+            return false;
+        }
+        if(!(x + 4 >= dimensions)){
+            if(getSpot(x,y).owner.equals(your_color) &&
+                    getSpot(x + 1, y).owner.equals(your_color) &&
+                    getSpot(x + 2, y).owner.equals(your_color) &&
+                    getSpot(x + 3, y).owner.equals(your_color) &&
+                    getSpot(x + 4, y).owner.equals(your_color)){
+                return true;
+            }
+
+            return false;
+        }
+        return false;
+
+    }
+
+    private boolean checkVerticalWin(Spot s){
+        int x = s.x;
+        int y = s.y;
+
+        if(!(y - 4 < 0)){
+            if(getSpot(x,y).owner.equals(your_color) &&
+                    getSpot(x, y - 1).owner.equals(your_color) &&
+                    getSpot(x, y - 2).owner.equals(your_color) &&
+                    getSpot(x, y - 3).owner.equals(your_color) &&
+                    getSpot(x, y - 4).owner.equals(your_color)){
+                return true;
+            }
+            return false;
+        }
+        if(!(y + 4 >= dimensions)){
+            if(getSpot(x,y).owner.equals(your_color) &&
+                    getSpot(x, y + 1).owner.equals(your_color) &&
+                    getSpot(x, y + 2).owner.equals(your_color) &&
+                    getSpot(x, y + 3).owner.equals(your_color) &&
+                    getSpot(x, y + 4).owner.equals(your_color)){
+                return true;
+            }
+
+            return false;
+        }
+        return false;
+
+    }
+
+    private boolean checkDiagonalWin(Spot s){
+        int x = s.x;
+        int y = s.y;
+
+        if( ( (x + 4) < dimensions) && ( (y + 4) < dimensions)) {
+            //Down right diagonal
+            if (getSpot(x, y).owner.equals(your_color) &&
+                    getSpot(x + 1, y + 1).owner.equals(your_color) &&
+                    getSpot(x + 2, y + 2).owner.equals(your_color) &&
+                    getSpot(x + 3, y + 3).owner.equals(your_color) &&
+                    getSpot(x + 4, y + 4).owner.equals(your_color)) {
+                return true;
+            }
+        }
+            //Down left diagonal
+        if (((x-4) >= 0) && ((y+4) < dimensions)) {
+            if (getSpot(x, y).owner.equals(your_color) &&
+                    getSpot(x - 1, y + 1).owner.equals(your_color) &&
+                    getSpot(x - 2, y + 2).owner.equals(your_color) &&
+                    getSpot(x - 3, y + 3).owner.equals(your_color) &&
+                    getSpot(x - 4, y + 4).owner.equals(your_color)) {
+                return true;
+            }
+        }
+
+        if (((x-4) >= 0) && ((y-4) >= 0)) {
+            //Upleft diagonal
+            if (getSpot(x, y).owner.equals(your_color) &&
+                    getSpot(x - 1, y - 1).owner.equals(your_color) &&
+                    getSpot(x - 2, y - 2).owner.equals(your_color) &&
+                    getSpot(x - 3, y - 3).owner.equals(your_color) &&
+                    getSpot(x - 4, y - 4).owner.equals(your_color)) {
+                return true;
+            }
+        }
+
+        if (((x+4) < dimensions) && ((y-4) >= 0)) {
+            //up right diagonal
+            if (getSpot(x, y).owner.equals(your_color) &&
+                    getSpot(x + 1, y - 1).owner.equals(your_color) &&
+                    getSpot(x + 2, y - 2).owner.equals(your_color) &&
+                    getSpot(x + 3, y - 3).owner.equals(your_color) &&
+                    getSpot(x + 4, y - 4).owner.equals(your_color)) {
+                return true;
+            }
+        }
+        return false;
 
     }
 
