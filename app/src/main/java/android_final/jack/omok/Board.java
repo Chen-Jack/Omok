@@ -2,6 +2,7 @@ package android_final.jack.omok;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -58,7 +59,7 @@ public class Board extends View {
     }
 
 
-    int dimensions = 19; //default is a 19 x 19 board
+    int dimensions = 13; //default is a 19 x 19 board
     double pixel_per_spot = 0; //The amount of pixels between each spot
 
     Spot[][] board_state;
@@ -171,14 +172,14 @@ public class Board extends View {
         super.onDraw(canvas);
 
 
-        Bitmap go_board_img = BitmapFactory.decodeResource(getResources(), R.drawable.go_board);
+        Bitmap go_board_img = BitmapFactory.decodeResource(getResources(), R.drawable.go_board_13x13);
         //Resize the image to take up the size of the screen width
         go_board_img = Bitmap.createScaledBitmap(go_board_img, canvas.getWidth(), canvas.getWidth(), false);
 
         //Draw the board
         canvas.drawBitmap(go_board_img, 0, 0, null);
 
-        this.pixel_per_spot = (go_board_img.getWidth()/ ((double)dimensions + 1));
+        this.pixel_per_spot = (go_board_img.getWidth()/ ((double)dimensions));
 
         if(!board_initialized)
             initialize_board_state();
@@ -285,13 +286,53 @@ public class Board extends View {
         invalidate();
     }
 
+    public void surrender(){
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle("QUIT?");
+        builder.setMessage("Are you sure you want to surrender?");
+        builder.setNegativeButton("No", new DialogInterface.OnClickListener(){
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+        builder.setPositiveButton("Yes", new DialogInterface.OnClickListener(){
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                String command = String.valueOf(GameSession.SURRENDER);
+                byte[] bytes = command.getBytes();
+                ((GameSession)context).sendReceive.write(bytes);
+            }
+        });
+        builder.show();
+    }
 
+    public void loseGame(){
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle("YOU LOST...");
+        builder.setMessage("New Game?");
+        builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+        builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                restartGame();
+                dialog.dismiss();
+            }
+        });
+        builder.show();
+    }
 
     public void winGame(){
         //Create alert dialog that you won
 
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
         builder.setMessage("YOU WIN!");
+        builder.setMessage("Opponent is deciding on rematch . . .");
         builder.show();
 
         Toast.makeText(context, "Winner", Toast.LENGTH_SHORT).show();
@@ -426,8 +467,7 @@ public class Board extends View {
 
     }
 
-    public void restartGame(){
-
+    public void resetBoard(){
         //Swap who goes first and swap the colors
         this.goes_first = !this.goes_first;
         if(this.goes_first)
@@ -438,10 +478,23 @@ public class Board extends View {
         //Who ever is white now goes first
         this.your_turn = this.goes_first;
 
+        if(this.your_turn)
+            ((TextView)((GameSession)context).findViewById(R.id.turn_status)).setText("Your Turn");
+        else
+            ((TextView)((GameSession)context).findViewById(R.id.turn_status)).setText("Their Turn");
+
+        initialize_board_state();
+        invalidate();
+    }
+
+    public void restartGame(){
+
+
         String command = String.valueOf(GameSession.RESTART_GAME);
         byte[] bytes = command.getBytes();
         ((GameSession)context).sendReceive.write(bytes);
-        initialize_board_state();
+
+        resetBoard();
 
     }
 

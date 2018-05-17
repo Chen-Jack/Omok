@@ -1,6 +1,7 @@
 package android_final.jack.omok;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.IntentFilter;
 import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pConfig;
@@ -64,6 +65,7 @@ public class GameSession extends AppCompatActivity {
     static final int WINNER = 2;
     static final int LOSER = 3;
     static final int RESTART_GAME = 4;
+    static final int SURRENDER = 5;
 
     WifiP2pManager.ConnectionInfoListener connectionInfoListener = new WifiP2pManager.ConnectionInfoListener() {
         @Override
@@ -107,7 +109,7 @@ public class GameSession extends AppCompatActivity {
                 new WifiP2pManager.ActionListener() {
                     @Override
                     public void onSuccess() {
-                        Toast.makeText(getApplicationContext(), "Connected to " + device.deviceName, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getApplicationContext(), "Connecting to " + device.deviceName, Toast.LENGTH_SHORT).show();
                     }
 
                     @Override
@@ -170,7 +172,7 @@ public class GameSession extends AppCompatActivity {
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        game_board.restartGame();
+                        game_board.surrender();
                     }
                 }
         );
@@ -232,13 +234,16 @@ public class GameSession extends AppCompatActivity {
                             case WINNER:
                                 Toast.makeText(getApplicationContext(), "Loser", Toast.LENGTH_SHORT).show();
                                 //Create alert dialog that you lost
-                                AlertDialog.Builder builder = new AlertDialog.Builder(getApplicationContext());
-                                builder.setMessage("You Lost...");
-                                builder.show();
+                                game_board.loseGame();
 
                                 break;
                             case RESTART_GAME:
-                                game_board.restartGame();
+                                game_board.resetBoard();
+                                break;
+
+                            case SURRENDER:
+                                //Your opponent sent a surrender message, you won!
+                                game_board.winGame();
                                 break;
                         }
 
@@ -337,6 +342,9 @@ public class GameSession extends AppCompatActivity {
                             }
                             else if(command.equals(RESTART_GAME)){
                                 handler.obtainMessage(RESTART_GAME, tempMsg).sendToTarget();
+                            }
+                            else if(command.equals(SURRENDER)){
+                                handler.obtainMessage(SURRENDER, tempMsg).sendToTarget();
                             }
                         }
 
